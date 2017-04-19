@@ -4,7 +4,7 @@ import random
 import urllib
 import logging
 import traceback
-
+import time
 # Enabling debugging at http.client level (requests->urllib3->http.client)
 # you will see the REQUEST, including HEADERS and DATA,
 # and RESPONSE with HEADERS but without DATA.
@@ -26,7 +26,7 @@ class BtcTradeUA(object):
     def __init__(self, *args, **kwargs):
         self.__public_key = kwargs.get("public_key")
         self.__private_key = kwargs.get("private_key")
-        self.__nonce = kwargs.get("nonce", 0)
+        self.__nonce = kwargs.get("nonce", int(time.time()))
         self.__verbosity = kwargs.get("verbose", 1)
         if self.__verbosity:
             HTTPConnection.debuglevel = 1
@@ -95,8 +95,12 @@ class BtcTradeUA(object):
                 print(result.text)
                 traceback.print_exc()
             raise Exception("Bad status response")
-        return result.json()
-        
+        try:
+           return result.json()
+        except:
+            print result.text
+            raise Exception("Bad status response")
+            
 
 #curl -k   -i -H "api_sign:
 #9925916858e6361ffb88fc0b71d763355ea979e3ac62a6acaa8fe4a8ba548abf"
@@ -111,13 +115,59 @@ class BtcTradeUA(object):
         return m.hexdigest()
 
     def __update_auth(self, result):
-        self.__nonce += 1
+        self.__nonce = int( time.time()) 
+    
+    def sell(self, price, amount, market="btc_uah",  out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
 
+        url = self.__end_points["sell"]+ market + "/" +"?is_api=1"
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce, "count": amount, "price": price}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result
+
+    def buy(self, price, amount, market="btc_uah", out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
+
+        url = self.__end_points["buy"]+ market + "/" +"?is_api=1"
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce, "count": amount, "price": price}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result
+
+
+
+    def bid(self, market="btc_uah", amount=1, out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
+
+        url = self.__end_points["bid"]+ market + "/" +"?is_api=1&amount="+str(amount)
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result
+       
+    def ask(self, market="btc_uah", amount=1, out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
+
+        url = self.__end_points["ask"]+ market + "/" +"?is_api=1&amount="+str(amount)
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result 
+      
     def balance(self, out_order_id=None):
         if out_order_id is None:
             out_order_id = BtcTradeUA.random_order()
 
-        url = self.__end_points["balance"]
+        url = self.__end_points["balance"]+ "?is_api=1"
         params = {"out_order_id": out_order_id, "nonce": self.__nonce}
         raw_data = urllib.urlencode(params)
         result = self.__post_request(url, raw_data, auth=True)
@@ -133,8 +183,9 @@ class BtcTradeUA(object):
         raw_data = urllib.urlencode(params)
         result = self.__post_request(url, raw_data, auth=True)
         self.__update_auth(result)
-        return result       
-    
+        return result  
+     
+    # deprecated 
     def auth(self, out_order_id=None):
         if out_order_id is None:
             out_order_id = BtcTradeUA.random_order()
@@ -188,6 +239,8 @@ class BtcTradeUA(object):
         self.__end_points["auth"] = BtcTradeUA.API_URL_V1 + "auth/"
         self.__end_points["sell_list"] = BtcTradeUA.API_URL_V1 + "trades/sell/"
         self.__end_points["buy_list"] = BtcTradeUA.API_URL_V1 + "trades/buy/"
+        self.__end_points["ask"] = BtcTradeUA.API_URL_V1 + "ask/"
+        self.__end_points["bid"] = BtcTradeUA.API_URL_V1 + "bid/"
         self.__end_points["buy"] = BtcTradeUA.API_URL_V1 + "buy/"
         self.__end_points["sell"] = BtcTradeUA.API_URL_V1 + "sell/"
         self.__end_points["remove"] = BtcTradeUA.API_URL_V1 + "remove/order/"
@@ -235,20 +288,27 @@ class BtcTradeUA(object):
 
 if __name__ == '__main__':
     api_object = BtcTradeUA(public_key =
-            "1bc2a1e79c3721295c38b727fec13d779eb7b6b3af497da89c17ce4ab4f2aa56",
+            "",
             private_key=
-            "959203491261e18108670646e4d374c7764eafc1e94455366de5e7dba6a50d2d",
-            nonce=1,
+            "",
             verbose=True
             )
     # 
     print api_object.markets()
-    print api_object.auth(2)
-    print api_object.balance(3)
-    print api_object.my_orders(out_order_id=4)
-    print api_object.my_deals(out_order_id=5)
-    print api_object.sell_list()
-    print api_object.buy_list()
+    print api_object.balance()
+    working_volume = 0.001
+    resp = api_object.bid("btc_uah", working_volume)
+    print resp 
+    # my price   
+    my_price = float(resp["end_price"])*0.99
+    print my_price
+    print working_volume
+    resp = api_object.sell(my_price, working_volume)
+    print resp
+#    print api_object.bid("btc_uah",0.01)
+    #print api_object.my_orders(out_order_id=4)
+    #print api_object.sell_list()
+    #print api_object.buy_list()
     
 
     
