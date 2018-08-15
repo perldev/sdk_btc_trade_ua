@@ -30,13 +30,14 @@ class BtcTradeUA(object):
     API_URL_V2 = "https://btc-trade.com.ua/api/v2/"
 
     def __init__(self, *args, **kwargs):
-        print kwargs
+        self.__verbosity = kwargs.get("verbose", False)
+        if self.__verbosity:
+            print kwargs
+
         self.__public_key = kwargs.get("public_key")
         self.__private_key = kwargs.get("private_key")
         self.__f2a_key =  kwargs.get("f2a_key")
         self.__nonce = kwargs.get("nonce", int(time.time())*1000)
-        self.__verbosity = kwargs["verbose"]
-        print self.__verbosity
         if self.__verbosity:
             HTTPConnection.debuglevel = 1
             logging.basicConfig()
@@ -146,7 +147,7 @@ class BtcTradeUA(object):
         if out_order_id is None:
             out_order_id = BtcTradeUA.random_order()
 
-        url = self.__end_points["sell"]+ market + "/" +"?is_api=1"
+        url = self.__end_points["sell"]+ market +"?is_api=1"
         params = {"out_order_id": out_order_id, "nonce": self.__nonce, "count": amount, "price": price}
         raw_data = urllib.urlencode(params)
         result = self.__post_request(url, raw_data, auth=True)
@@ -157,7 +158,7 @@ class BtcTradeUA(object):
         if out_order_id is None:
             out_order_id = BtcTradeUA.random_order()
 
-        url = self.__end_points["buy"]+ market + "/" +"?is_api=1"
+        url = self.__end_points["buy"]+ market  +"?is_api=1"
         params = {"out_order_id": out_order_id, "nonce": self.__nonce, "count": amount, "price": price}
         raw_data = urllib.urlencode(params)
         result = self.__post_request(url, raw_data, auth=True)
@@ -261,11 +262,7 @@ class BtcTradeUA(object):
         return result
     
     def invoice_status(self, order):
-        if out_order_id is None:
-            out_order_id = BtcTradeUA.random_order()
-
-        params = {"order":order, "out_order_id":out_order_id}
-        url = self.__end_points["checkout_status"]
+        url = self.__end_points["checkout_status"] + order
         params["nonce"] = self.__nonce
         raw_data = urllib.urlencode(params)
         result = self.__post_request(url, raw_data, auth=True)
@@ -320,7 +317,31 @@ class BtcTradeUA(object):
         result = self.__post_request(url, raw_data, auth=True, auth2fa=True)
         self.__update_auth(result)
         return result
+   
+    def order_status(self,order, out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
+
+        url = self.__end_points["status"] + str(order)
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result
     
+    def order_remove(self,order, out_order_id=None):
+        if out_order_id is None:
+            out_order_id = BtcTradeUA.random_order()
+
+        url = self.__end_points["remove"] + str(order)
+        params = {"out_order_id": out_order_id, "nonce": self.__nonce}
+        raw_data = urllib.urlencode(params)
+        result = self.__post_request(url, raw_data, auth=True)
+        self.__update_auth(result)
+        return result
+
+
+ 
     
     def __generate_end_points_v1(self):
         self.__end_points["auth"] = BtcTradeUA.API_URL_V1 + "auth"
@@ -338,64 +359,11 @@ class BtcTradeUA(object):
         self.__end_points["balance"] = BtcTradeUA.API_URL_V1 +"balance"
         self.__end_points["markets"] =  BtcTradeUA.API_URL_V1 +"market_prices"
         self.__end_points["checkout"] =  BtcTradeUA.API_URL_V1 +"checkout/invoice"
-        self.__end_points["checkout_status"] =  BtcTradeUA.API_URL_V1 +"checkout/status"
+        self.__end_points["checkout_status"] =  BtcTradeUA.API_URL_V1 +"checkout/status/"
         self.__end_points["checkout_send"] =  BtcTradeUA.API_URL_V1 +"checkout/send"
         self.__end_points["send_status"] =  BtcTradeUA.API_URL_V1 +"checkout/send/status"
         self.__end_points["address"] =  BtcTradeUA.BASE +"finance/crypto_currency/"
 
 
-    #
-        
-    #(r'/api/buy/([\w]+)', CommonRequestHandlerOneParamNonThread,
-#dict(callable_object=buy, name='buy')),
-    #(r'/api/ask/([\w]+)', CommonRequestHandlerOneParamNonThread,
-#dict(callable_object=ask, name='ask')),
-    #(r'/api/bid/([\w]+)', CommonRequestHandlerOneParamNonThread,
-#dict(callable_object=bid, name='bid')),
-    #(r'/api/sell/([\w]+)', CommonRequestHandlerOneParamNonThread,
-#dict(callable_object=sell, name='sell')),
-    #(r'/api/remove/order/([\w]+)', CommonRequestHandlerOneParam,
-#dict(callable_object=remove_order,
-  
- #(r'/api/my_orders/([\w]+)', CommonRequestHandlerOneParam,
-#dict(callable_object=my_orders,
 
-#name='my_orders')),
-    #(r'/api/order/status/([\w]+)', CommonRequestHandlerOneParam,
-#dict(callable_object=order_status,
 
-#name='order_status')),
-    #(r'/api/deals/([\w]+)', CommonRequestHandlerOneParam,
-#dict(callable_object=deal_list,
-
-#name='deal_list')),
-    #(r'/api/balance', CommonRequestHandler, dict(callable_object=user_balance,
-                                                 #name='user_balance')),
-    #(r'/api/my_deals/([\w]+)', CommonRequestHandlerOneParam,
-#dict(callable_object=my_closed_orders,
-#url("checkout/invoice", 'checkout.api.checkout', name="invoice"), 
-#url("checkout/status/(\w+)$", 'checkout.api.check_status', name="invoice_status"),
-
-        
-
-        
-
-if __name__ == '__main__':
-    api_object = BtcTradeUA(public_key =
-            "1bc2a1e79c3721295c38b727fec13d779eb7b6b3af497da89c17ce4ab4f2aa56",
-            private_key="test",
-            f2a_key = "ZIYIXFDWXJZ3UIBCXUJCKW3VQ5ISDOOS",
-            verbose=True
-            )
-    # 
-    print api_object.balance()
-    #print api_object.send("BTC", "1LNYCGkXtJscvMHHucEfpxWMBnf33Ke18W", 0.5, out_order_id=None)
-    print api_object.send_status("5662907")
-    #print api_object.address("BTC")
-    #print api_object.my_orders(out_order_id=4)
-    #print api_object.sell_list()
-    #print api_object.buy_list()
-    
-
-    
-    
